@@ -177,9 +177,9 @@ if __name__ == '__main__':
         bayes.append(1 - np.mean(b == y1))
 
     print('singular predictor overall error: %s' % np.mean(sing))
-    print('ensemble voting overall error: %s' % np.mean(sing))
+    print('ensemble voting overall error: %s' % np.mean(vote))
     print('bayesian posterior estimation of ensemble'
-          'weights overall error: %s' % np.mean(sing))
+          'weights overall error: %s' % np.mean(bayes))
 
 
 
