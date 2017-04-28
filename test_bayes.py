@@ -162,37 +162,43 @@ def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
 
 
 
+if __name__ == '__main__':
 
-if __name__ == 'main':
+    """
+    run the tests. five data files, ten trials each
+    """
+
+    os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
     use_datasets = ['mushrooms.txt', 'australian.txt', 'heart.txt',
                     'ionosphere.txt', 'sonar.txt']
     use_classes = [(1, 2), (-1, 1), (-1, 1), (-1, 1), (-1, 1)]
 
-    os.chdir('/users/zgallegos/documents/school/math_538/project/data')
-
+    n_trials = 10
+    feat_perc = .5 # percentage of the features ensemble classifiers get
 
     for j, k in enumerate(use_datasets):
 
-        fl = use_datasets[j]
+        fl_name = re.search('^.+?(?=\.txt)', k).group(0)
+        err_fl = fl_name + '_errors.csv'
+
         cls = use_classes[j]
 
-        X, y = load_svmlight_file(fl)
+        X, y = load_svmlight_file(k)
         X = X.toarray()
         y = y.astype(int)
 
-        feat_perc = .5
         feats = int(np.floor(feat_perc * X.shape[1]))
-
-        n_trials = 5
 
         sing = []
         vote = []
         bayes = []
 
-        for i in range(n_trials):
+        trlz = range(n_trials)
 
-            err_label = 
+        for i in trlz:
+
+            cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
 
             single = naive_bayes.BernoulliNB()
             ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
@@ -200,24 +206,27 @@ if __name__ == 'main':
             s, v, b, y_ = online_test(ensemble, single, X, y, cls, 
                             start_prop = .1, a = 1, b = 1, theta = .1)
 
+            indx = range(1, len(y_) + 1)
+            cum_sing = 1 - np.cumsum(s == y_) / indx
+            cum_vote = 1 - np.cumsum(v == y_) / indx
+            cum_bayes = 1- np.cumsum(b == y_) / indx
+
+            to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes), axis = 1)
+            
+            df = pd.DataFrame(to_write, columns = ['index', 'single', 'vote', 'bayes'])
+            df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
+
             sing.append(1 - accuracy_score(y_, s))
             vote.append(1 - accuracy_score(y_, v))
             bayes.append(1 - accuracy_score(y_, b))
 
-        print(k)
-        print('single mean error %s' % np.mean(sing))
-        print('vote mean error %s' % np.mean(vote))
-        print('bayes mean error %s' % np.mean(bayes))
+        to_write = np.stack((trlz, sing, vote, bayes), axis = 1)
 
-        indx = range(1, len(y_) + 1)
-        cum_sing = 1 - np.cumsum(s == y_) / indx
-        cum_vote = 1 - np.cumsum(v == y_) / indx
-        cum_bayes = 1- np.cumsum(b == y_) / indx
+        df = pd.DataFrame(to_write, columns = ['trial', 'single', 'vote', 'bayes'])
+        df.to_csv(os.path.join('results', 'accuracy', err_fl))
 
-        plt.plot(indx, cum_sing)
-        plt.plot(indx, cum_vote)
-        plt.plot(indx, cum_bayes)
-        plt.legend(['singular', 'voting', 'bayes'], loc = 'upper right')
-        plt.show()
+
+
+
 
 
