@@ -1,20 +1,19 @@
 import numpy as np
 import pandas as pd
-import pickle
 import os
 import re
-
-import matplotlib.pyplot as plt
 
 from sklearn import naive_bayes
 from sklearn.base import clone
 from sklearn.model_selection import train_test_split
-from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import log_loss, accuracy_score
+from sklearn.datasets import load_svmlight_file
 
 
 def create_ensemble(classifier, X, num, num_features):
     """
+    create a uniform ensemble of <num> classifiers, each of which uses
+    <num_features> randomly-sampled features of the data
     """
     estimators = [None] * num
     n_feats = X.shape[1]
@@ -30,6 +29,8 @@ def create_ensemble(classifier, X, num, num_features):
 
 def fit_ensemble(ensemble, x, y, partial = False, classes = None):
     """
+    fit the ensemble, each classifier with its own set of features
+    if <partial>, do an online fit
     """
     for e in ensemble:
 
@@ -48,6 +49,7 @@ def fit_ensemble(ensemble, x, y, partial = False, classes = None):
 
 def update_bayes(ensemble, i, x, y, classes, a, b, theta):
     """
+    update loss and ensemble weights
     """
     t = i + 1
 
@@ -66,6 +68,7 @@ def update_bayes(ensemble, i, x, y, classes, a, b, theta):
 
 def predict_bayes(ensemble, i, X, classes):
     """
+    ensemble prediction using posterior ensemble weights
     """
     m = len(ensemble)
     neg_label, pos_label = classes
@@ -96,6 +99,7 @@ def predict_bayes(ensemble, i, X, classes):
 
 def predict_vote(ensemble, X, classes):
     """
+    ensemble prediction by soft voting
     """
     ensemble_preds = [e.predict_proba(X[:, e.sub_feats]) for e in ensemble]
     pred = np.concatenate(ensemble_preds).sum(axis = 0)
@@ -105,6 +109,7 @@ def predict_vote(ensemble, X, classes):
 
 def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
     """
+    perform the tests
     """
     X_start, X_stream, y_start, y_stream = train_test_split(
         X, y, test_size = 1 - start_prop)
@@ -224,7 +229,6 @@ if __name__ == '__main__':
 
         df = pd.DataFrame(to_write, columns = ['trial', 'single', 'vote', 'bayes'])
         df.to_csv(os.path.join('results', 'accuracy', err_fl))
-
 
 
 
