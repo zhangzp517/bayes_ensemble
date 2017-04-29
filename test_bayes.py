@@ -170,15 +170,15 @@ if __name__ == '__main__':
 
     os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
-    use_datasets = ['mushrooms.txt', 'australian.txt', 'heart.txt',
+    use_datasets = ['heart.txt', 'mushrooms.txt', 'australian.txt',
                     'ionosphere.txt', 'sonar.txt']
-    use_classes = [(1, 2), (-1, 1), (-1, 1), (-1, 1), (-1, 1)]
+    use_classes = [(-1, 1), (1, 2), (-1, 1), (-1, 1), (-1, 1)]
 
     n_trials = 10
     feat_perc = .5 # percentage of the features ensemble classifiers get
 
     for j, k in enumerate(use_datasets):
-
+        
         fl_name = re.search('^.+?(?=\.txt)', k).group(0)
         err_fl = fl_name + '_errors.csv'
 
