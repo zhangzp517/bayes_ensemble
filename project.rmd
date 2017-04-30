@@ -14,25 +14,115 @@ In classification problems, ensembling is a popular technique in machine learnin
 
 # A Bayesian Method for Optimizing Online Ensemble Weights
 
-Now we will review the Bayesian method proposed for optimizing the ensemble weights, the subject of this paper. First, define the following:
+Now we will review the Bayesian method proposed for optimizing the ensemble weights, the subject of the paper. First, define the following:
 
 \begin{align}
 & \left\{ \left(\mathbf{x}^{t}, y^t \right) \right\} && \text{ training samples at time } t \nonumber \\
 & \left\{ c^{t}_{i}\left(\mathbf{x}\right) \right\}_{i=1}^{m} && \text{ set of } m \text{ classifiers in ensemble at } t \nonumber \\
-& \mathbf{\lambda} && \text{ vector of ensemble weights, } \lambda_i > 0 \nonumber \\ \\
+& \mathbf{\lambda} && \text{ vector of ensemble weights, } \lambda_i > 0 \nonumber \\ \nonumber \\
 & \mathbf{g} = \left(g_1, \ldots, g_m \right) && \text{ vector of losses for each classifier, } g_i \geq 0 \nonumber \\
 & \mathbf{g}^t = \left(g^{t}_1, \ldots, g^{t}_m \right) && \text{ vector of losses at } t \nonumber \\
 & \mathbf{g}^{1:t} = \left(\mathbf{g}^{1:t}_1, \ldots, \mathbf{g}^{1:t}_m \right) && \text{ matrix of losses up to } t \nonumber \\
-& l \left(\mathbf{\lambda}, \mathbf{g}^{t} \right) && \text{ loss function of the ensemble} \nonumber \\ \\
+& l \left(\mathbf{\lambda}, \mathbf{g}^{t} \right) && \text{ loss function of the ensemble} \nonumber \\ \nonumber \\
 & p\left(\mathbf{g} \big| \mathbf{\lambda} \right) = e^{-l\left(\mathbf{\lambda}, \mathbf{g}\right)} && \text{likelihood function for the vector of losses} \nonumber \\
 & p\left(\mathbf{\lambda}\right) = e^{-l_{0}\left(\mathbf{\lambda}\right)} && \text{prior for the ensemble weight vector} \nonumber
 \end{align}
 
-Our objective is to choose the ensemble weight vector $\mathbf{\lambda}$ to minimize the expected value of the ensemble loss function, $E\left[l \left(\mathbf{\lambda}, \mathbf{g}^{t} \right)\right]$, which we estimate by $\sum_{i=1}^{t} l \left(\mathbf{\lambda}, \mathbf{g}^{i} \right)$.
+Our objective is to choose the ensemble weight vector $\mathbf{\lambda}$ to minimize the expected value of the ensemble loss function, $E\left[l \left(\mathbf{\lambda}, \mathbf{g}^{t} \right)\right]$, which we estimate by $L_t \left(\mathbf{\lambda}; \mathbf{g}^{t} \right) = l_{0}\left(\mathbf{\lambda}\right) + \sum_{i=1}^{t} l \left(\mathbf{\lambda}; \mathbf{g}^{i} \right)$, where $l_0\left(\mathbf{\lambda}\right)$ is some initial loss. The authors suppose a number of technical regularity conditions on the function $L_t$ that are required to show later results, the most important of which is that the posterior distribution of $\mathbf{\lambda}$ will have a mean near the optimal minimum of the empirical loss, $\sum_{i=1}^{t} l \left(\mathbf{\lambda}, \mathbf{g}^{i} \right)$. This is the central result of the paper, and suggests if we could derive an appropriate posterior, we could use it to optimally update the weights.
 
+Specifically, the posterior of interest is one that considers all the losses of each classifier up to the present time (say $t$): $p\left(\mathbf{\lambda} \big| \mathbf{g}^{1:t}\right)$. By assumed independence of the losses in each time period, we can write:
 
+\begin{align}
+p\left(\mathbf{\lambda} \big| \mathbf{g}^{1:t}\right) \propto \prod_{j=1}^{t} p\left(\mathbf{g}^{j} \big| \mathbf{\lambda}\right) p\left(\mathbf{\lambda}\right)
+\end{align}
 
+...which gives the distribution whose posterior mean will be used to update the ensemble weights, given appropriate distributional forms for the likelihood and the prior.
 
+This setup admits the following algorithm:
+
+* Setting: Suppose we have a set of $m$ online classifiers in an ensemble, $\left\{ c^{t}_{i}\left(\mathbf{x}\right) \right\}_{i=1}^{m}$, which we denote with $t$ to indicate they have been trained with all the data through time $t$. We are streaming new samples $\left\{ \left(\mathbf{x}^{t}, y^t \right) \right\}$, $t = 1, \ldots, T$, where $\mathbf{x}^{t}$ is the vector of available features and $y^t$ is the class label of the observation. We have set an appropriate likelihood function for the losses, $p\left(\mathbf{g}\big|\mathbf{\lambda}\right)$, and have chosen a prior, $p\left(\mathbf{\lambda}\right)$. We are interested in predicting the class labels of observations as they arrive.
+* For $t = 1, \ldots, T$:
+    1. For each classifier in the ensemble, compute $g_{i}^{t}$, which is a function of the decison of classifier $i$ and the true label of the observation; that is: $g_{i}^{t} = g\left(c_{i}^{t}\left(\mathbf{x}^t\right), y^t\right)$.
+    2. Use this value of the loss function $g$ to update the posterior distribution of each $\lambda_i$ with its posterior mean. This distribution will depend on all loss function values observed through time $t$, such that the historical performance of every estimator in the ensemble is factored into its weight.
+    3. Update the classifiers in the ensemble using the just-observed sample pair $\left(\mathbf{x}^{t}, y^t \right)$.
+    4. Predict the next incoming sample by the $argmin$ of the weighted sum of the loss functions, using the most recently updated ensemble weights.
+
+The aim of the algorithm is to recursively approximate the optimal ensemble weight vector $\mathbf{\lambda}$ that minimizes the loss function of the ensemble.
+
+## A Specific Formulation
+
+Now we will consider an example of the Bayesian algorithm proposed with a specific form for the ensemble loss function. This specific formulation will be used in the empirical testing to follow, as it is the paper.
+
+In particular, suppose that the loss function of the ensemble has the form:
+
+\begin{align}
+l\left(\mathbf{\lambda}, \mathbf{g}\right) = \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \nonumber
+\end{align}
+
+...where $g$ is the logistic loss function. This definition is straightforward and is a simple weighted sum of the values of the loss function for each classifier, with an extra term to avoid the trivial minimizer of $\mathbf{\lambda} = \mathbf{0}$ (the second term shrinks rapidly as the values of each $\lambda_i$ become small). The parameter $\theta$ controls the tradeoff between minimizing the first term and maximizing the second, and effectively controls our tolerance for small weights (in practice, this term does not seem especially important).
+
+If we subtract an extra term $mlog\theta$ from the ensemble loss function given (which does not affect the optimization process), then following the definition $p\left(\mathbf{g} \big| \mathbf{\lambda} \right) = e^{-l\left(\mathbf{\lambda}, \mathbf{g}\right)}$ given in the prior section, the likelihood function takes the form:
+
+\begin{align}
+p\left(\mathbf{g} \big| \mathbf{\lambda}\right) & = \text{exp} \left\{ -\theta\sum_{i=1}^{m}\lambda_{i}g_{i} + \sum_{i=1}^{m}log\lambda_i + mlog\theta \right\} \nonumber \\
+& =\theta^m\left[\prod_{i=1}^{m} e^{-\theta\lambda_{i}g_{i}}\right]\left[\prod_{i=1}^{m}\lambda_i\right] \nonumber \\
+& = \prod_{i=1}^{m} \theta \lambda_i e^{-\theta\lambda{i}g_i}
+\end{align}
+
+...which is the product of $m$ exponential densities, each with rate parameter $\theta \lambda_i$. Hence under this ensemble loss function, the loss of each classifier given $\lambda_i$ is exponentially distributed.
+
+Choose a gamma prior for $\mathbf{\lambda}$ for conjugacy, $\lambda_i \sim \Gamma\left(\alpha, \beta\right)$ (where $\beta$ is a rate parameter):
+
+\begin{align}
+p\left(\mathbf{\lambda}\right) \propto \prod_{i=1}^{m} \lambda_{i}^{\alpha - 1}e^{-\beta\lambda_i}
+\end{align}
+
+From here, we are interested in deriving the posterior distribution of $\mathbf{\lambda}$ after we observed vectors of losses $\mathbf{g}$ in $t$ time periods, such that all loss information for each classifier in the ensemble is incorporated into the posterior distribution. If we choose the form of the initial loss to roughly follow that of $l\left(\mathbf{\lambda}, \mathbf{g}\right)$, then we can can set it to be:
+
+\begin{align}
+l_{0}\left(\mathbf{\lambda}\right) = \beta\sum_{i=1}^{m}\lambda_i - \left(\alpha - 1 \right)\sum_{i=1}^{m}log\lambda_i
+\end{align}
+
+(This choice is not supported by theory in the paper and by all appearances seems to be chosen so that the posterior takes a convenient distributional form. The authors do state that this term can feasibly be omitted early in the paper, so it is likely that this form is just chosen for convenience.)
+
+With this choice of the initial loss, the ensemble loss function has the form:
+
+\begin{align}
+L_t \left(\mathbf{\lambda}; \mathbf{g}^{t} \right) & = l_{0}\left(\mathbf{\lambda}\right) + \sum_{j=1}^{t} l \left(\mathbf{\lambda}; \mathbf{g}^{j} \right) \nonumber \\
+& = \beta\sum_{i=1}^{m}\lambda_i - \left(\alpha - 1 \right)\sum_{i=1}^{m}log\lambda_i + \sum_{j=1}^{t}\left[ \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \right]
+\end{align}
+
+...and hence, the posterior distribution for $\mathbf{\lambda}$ of interest is given by:
+
+\begin{align}
+p\left(\mathbf{\lambda} \big| \mathbf{g}^{1:t}\right) & = \text{exp} \left\{ L_t \left(\mathbf{\lambda}; \mathbf{g}^{t} \right) \right\} \nonumber \\
+& = \text{exp} \left\{ \beta\sum_{i=1}^{m}\lambda_i - \left(\alpha - 1 \right)\sum_{i=1}^{m}log\lambda_i + \sum_{j=1}^{t}\left[ \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \right] \right \} \nonumber \\
+& = \prod_{i=1}^{m} e^{-\beta \lambda_i} \lambda_{i}^{\alpha - 1}\lambda_{i}^{t} e^{\theta\lambda_i\sum_{j=1}^{t}g_{i}^{j}} \nonumber \\
+& = \prod_{i=1}^{m} \lambda_{i}^{(t + \alpha) - 1} e^{-\left(\beta + \theta\sum_{j=1}^{t}g_{i}^{j}\right)\lambda_{i}}
+\end{align}
+
+...which is the product of $m$ independent $\Gamma\left(\alpha + t, \beta + \theta\sum_{j=1}^{t}g_{i}^{j} \right)$ densities.
+
+As an aside, although it is not given in the paper, perhaps a more readily intuitive derivation of this distribution (and one that does not involve the seemingly arbitrary choice of $l_0$) simply uses the general form of the posterior from Equation (1) and uses conjugacy, from which we have:
+
+\begin{align}
+p\left(\mathbf{\lambda} \big| \mathbf{g}^{1:t}\right) & \propto \prod_{j=1}^{t} p\left(\mathbf{g}^{j} \big| \mathbf{\lambda}\right) p\left(\mathbf{\lambda}\right) \nonumber \\
+& \propto \prod_{i=1}^{m}\lambda_{i}^{\alpha-1}e^{-\beta \lambda_i} \prod_{j=1}^{t}\prod_{i=1}^{m} \theta \lambda_i e^{-\theta\lambda_i g_{i}^{j}} \nonumber \\
+& = \prod_{i=1}^{m} \lambda_{i}^{\alpha-1}e^{-\beta\lambda_i}\lambda_{i}^{t}e^{-\theta\lambda_{i} \sum_{j=1}^{t} g_{i}^{j}} \nonumber \\
+& = \prod_{i=1}^{m} \lambda_{i}^{(t + \alpha) - 1} e^{-\left(\beta + \theta\sum_{j=1}^{t}g_{i}^{j}\right)\lambda_{i}}
+\end{align}
+
+...which is the same result as above.
+
+ In any case, with the posterior distribution in hand, following the discussion in the prior section, the update for each ensemble weight $\lambda_i$ at each time $t$ is the posterior mean of thes distributions, given by:
+
+\begin{align}
+\frac{t + \alpha}{\beta + \theta\sum_{j=1}^{t}g_{i}^{j}}
+\end{align}
+
+This update is intuitive. Because $\alpha$, $\beta$, and $\theta$ are all positive and $t$ is growing linearly over time, it is easy to see that the weight of each classifier in the ensemble depends inversely on its historical performance in terms of the sum of its historical losses on each incoming sample. Classifiers that have historically performed poorly will have their predictions appropriately downweighted (since $\sum_{j=1}^{t}g_{i}^{j}$ will be relatively large compared to the other classifiers), while the converse will be true for strong performers. Note that all information up to the current time is incorporated into each estimate.
+
+This completes the derivations of the algorithm as stated in the paper. We will now use this particular form of the algorithm to run experiments on benchmark datasets.
 
 # Empirical
 
@@ -44,7 +134,7 @@ For each trial, the test dataset in question is randomly split into an initial t
 
 1. "Voting" uses soft voting (class chosen by $argmax$ of the sums of the probability estimates for each class from each classifier in the ensemble).
 2. "SGD" estimates the ensemble weights by stochastic gradient descent.
-3. "Bayes" estimates the ensemble weights by the method described in this paper and make the prediction by the $argmin$ of the sums of the weighted losses for each class. Hyperparameters are set at $\alpha = 1$, $\beta = 1$, and $\theta = .1$. These are the values used in the final analysis given in the paper, and the authors show that the results of the experiments are practically invariant to the values of the hyperparameters, so we omit tuning of them.
+3. "Bayes" estimates the ensemble weights by the method described in this paper and make the prediction by the $argmin$ of the sums of the weighted losses for each class. Hyperparameters are set at $\alpha = 1$, $\beta = 1$, and $\theta = .1$. These are the values used in the final analysis given in the paper, and the authors show that the results of the experiments are practically invariant to the values of the hyperparameters, so we omit any tuning of them.
 
 In brief, the outline of the experiment is given below:
 
