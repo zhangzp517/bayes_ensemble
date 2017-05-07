@@ -144,11 +144,18 @@ def output_loss(ensemble, dataset, trial):
                              ensemble[med_ind].loss,
                              ensemble[max_ind].loss), axis = 1)
 
+    feats_towrite = np.stack((ensemble[min_ind].sub_feats,
+                              ensemble[med_ind].sub_feats,
+                              ensemble[max_ind].sub_feats), axis = 1)
+
     df = pd.DataFrame(lams_towrite, columns = ['lam_min', 'lam_med', 'lam_max'])
     df.to_csv(os.path.join('results', 'loss', dataset + '_lam_samp_' + str(trial) + '.csv'))
 
     df = pd.DataFrame(loss_towrite, columns = ['loss_min', 'loss_med', 'loss_max'])
     df.to_csv(os.path.join('results', 'loss', dataset + '_loss_samp_' + str(trial) + '.csv'))
+
+    df = pd.DataFrame(feats_towrite, columns = ['loss_min', 'loss_med', 'loss_max'])
+    df.to_csv(os.path.join('results', 'loss', dataset + '_feats_samp_' + str(trial) + '.csv'))
 
 
 def online_test(ensemble, single, X, y, classes, start_prop, do_sgd, **kwargs):
@@ -163,7 +170,14 @@ def online_test(ensemble, single, X, y, classes, start_prop, do_sgd, **kwargs):
     single_preds = [None] * stream_size
     vote_preds = [None] * stream_size
     bayes_preds = [None] * stream_size
-    sgd_preds = [None] * stream_size
+
+    if do_sgd:
+    
+        sgd_preds = [None] * stream_size
+
+    else:
+
+        sgd_preds = [0] * stream_size
 
     for e in ensemble:
 
@@ -234,83 +248,145 @@ def online_test(ensemble, single, X, y, classes, start_prop, do_sgd, **kwargs):
 
 
 if __name__ == '__main__':
-
-    """
-    run the tests. five data files, ten trials each
-    """
+    
 
     os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
-    use_datasets = ['heart.txt', 'australian.txt', 'ionosphere.txt', 
-                    'sonar.txt', 'mushrooms.txt']
-    use_classes = [(-1, 1), (-1, 1), (-1, 1), (-1, 1), (1, 2)]
+    """
+    run the main tests. five data files, ten trials each
+    """
 
-    use_datasets = ['mushrooms.txt']
-    use_classes = [(1, 2)]
+    # use_datasets = ['heart.txt', 'australian.txt', 'ionosphere.txt', 
+    #                 'sonar.txt', 'mushrooms.txt']
+    # use_classes = [(-1, 1), (-1, 1), (-1, 1), (-1, 1), (1, 2)]
 
-    n_trials = 10
-    feat_perc = .5 # percentage of the features ensemble classifiers get
+    # n_trials = 10
+    # feat_perc = .5 # percentage of the features ensemble classifiers get
 
-    for j, k in enumerate(use_datasets):
+    # for j, k in enumerate(use_datasets):
 
-        if k == 'mushrooms.txt':
+    #     if k == 'mushrooms.txt':
 
-            do_sgd = False
+    #         do_sgd = False
 
-        else:
+    #     else:
 
-            do_sgd = True
+    #         do_sgd = True
         
-        fl_name = re.search('^.+?(?=\.txt)', k).group(0)
-        err_fl = fl_name + '_errors.csv'
+    #     fl_name = re.search('^.+?(?=\.txt)', k).group(0)
+    #     err_fl = fl_name + '_errors.csv'
+
+    #     cls = use_classes[j]
+
+    #     X, y = load_svmlight_file(k)
+    #     X = X.toarray()
+    #     y = y.astype(int)
+
+    #     feats = int(np.floor(feat_perc * X.shape[1]))
+
+    #     sing = []
+    #     vote = []
+    #     bayes = []
+    #     sgd = []
+
+    #     trlz = range(n_trials)
+
+    #     for i in trlz:
+
+    #         cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
+
+    #         single = naive_bayes.BernoulliNB()
+    #         ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+
+    #         e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, do_sgd, 
+    #                                             a = 1, b = 1, theta = .1)
+
+    #         indx = range(1, len(y_) + 1)
+    #         cum_sing = 1 - np.cumsum(s == y_) / indx
+    #         cum_vote = 1 - np.cumsum(v == y_) / indx
+    #         cum_bayes = 1 - np.cumsum(b == y_) / indx
+    #         cum_sgd = 1 - np.cumsum(d == y_) / indx
+
+    #         to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
+            
+    #         df = pd.DataFrame(to_write, 
+    #                 columns = ['index', 'Single Classifier', 'Voting', 
+    #                            'Bayesian Weighting', 'SGD Weighting'])
+
+    #         df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
+
+    #         sing.append(1 - accuracy_score(y_, s))
+    #         vote.append(1 - accuracy_score(y_, v))
+    #         bayes.append(1 - accuracy_score(y_, b))
+    #         sgd.append(1 - accuracy_score(y_, d))
+
+    #         output_loss(e, fl_name, i)
+
+    #     to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
+
+    #     df = pd.DataFrame(to_write, 
+    #                 columns = ['trial', 'Single Classifier', 'Voting', 
+    #                            'Bayesian Weighting', 'SGD Weighting'])
+
+    #     df.to_csv(os.path.join('results', 'accuracy', err_fl))
+
+
+    """
+    cross-validate the ensemble loss parameter, theta
+    """
+
+    use_datasets = ['heart.txt', 'australian.txt']
+    use_classes = [(-1, 1), (-1, 1)]
+
+    n_trials = 5
+    feat_perc = .5
+
+    thetas = np.linspace(.9, 2, 8)
+
+    results_data = []
+    results_theta = []
+    results_err = []
+
+    for j, d in enumerate(use_datasets):
+
+        fl_name = re.search('^.+?(?=\.txt)', d).group(0)
 
         cls = use_classes[j]
 
-        X, y = load_svmlight_file(k)
+        X, y = load_svmlight_file(d)
         X = X.toarray()
         y = y.astype(int)
 
         feats = int(np.floor(feat_perc * X.shape[1]))
 
-        sing = []
-        vote = []
-        bayes = []
-        sgd = []
+        for t in thetas:
 
-        trlz = range(n_trials)
+            bayes = []
 
-        for i in trlz:
+            for i in range(n_trials):
 
-            cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
+                single = naive_bayes.BernoulliNB()
+                ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
-            single = naive_bayes.BernoulliNB()
-            ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+                e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
+                                                    a = 1, b = 1, theta = t)
 
-            e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, do_sgd, 
-                                                a = 1, b = 1, theta = .1)
+                bayes.append(1 - accuracy_score(y_, b))
 
-            indx = range(1, len(y_) + 1)
-            cum_sing = 1 - np.cumsum(s == y_) / indx
-            cum_vote = 1 - np.cumsum(v == y_) / indx
-            cum_bayes = 1- np.cumsum(b == y_) / indx
-            cum_sgd = 1- np.cumsum(d == y_) / indx
+            results_data.append(fl_name)
+            results_theta.append(t)
+            results_err.append(np.mean(bayes))
 
-            to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
-            
-            df = pd.DataFrame(to_write, columns = ['index', 'single', 'vote', 'bayes', 'sgd'])
-            df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
+    to_write = np.stack((results_data, results_theta, results_err), axis = 1)
 
-            sing.append(1 - accuracy_score(y_, s))
-            vote.append(1 - accuracy_score(y_, v))
-            bayes.append(1 - accuracy_score(y_, b))
-            sgd.append(1 - accuracy_score(y_, d))
+    df = pd.DataFrame(to_write, 
+                    columns = ['Dataset', 'Theta', 'Mean Error'])
 
-            output_loss(e, fl_name, i)
+    df.to_csv(os.path.join('results', 'cval_theta', 'cval_theta.csv'))
 
-        to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
 
-        df = pd.DataFrame(to_write, columns = ['trial', 'single', 'vote', 'bayes', 'sgd'])
-        df.to_csv(os.path.join('results', 'accuracy', err_fl))
+
+
 
 
 
