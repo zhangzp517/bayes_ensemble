@@ -248,7 +248,7 @@ def online_test(ensemble, single, X, y, classes, start_prop, do_sgd, **kwargs):
 
 
 if __name__ == '__main__':
-    
+
 
     os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
@@ -335,19 +335,80 @@ if __name__ == '__main__':
     cross-validate the ensemble loss parameter, theta
     """
 
+    # use_datasets = ['heart.txt', 'australian.txt']
+    # use_classes = [(-1, 1), (-1, 1)]
+
+    # n_trials = 5
+    # feat_perc = .5
+
+    # thetas = np.linspace(.9, 2, 8)
+
+    # results_data = []
+    # results_theta = []
+    # results_err = []
+
+    # for j, d in enumerate(use_datasets):
+
+    #     print('doing dataset %s' % d)
+
+    #     fl_name = re.search('^.+?(?=\.txt)', d).group(0)
+
+    #     cls = use_classes[j]
+
+    #     X, y = load_svmlight_file(d)
+    #     X = X.toarray()
+    #     y = y.astype(int)
+
+    #     feats = int(np.floor(feat_perc * X.shape[1]))
+
+    #     for t in thetas:
+
+    #         print('doing theta %s' % t)
+
+    #         bayes = []
+
+    #         for i in range(n_trials):
+
+    #             single = naive_bayes.BernoulliNB()
+    #             ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+
+    #             e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
+    #                                                 a = 1, b = 1, theta = t)
+
+    #             bayes.append(1 - accuracy_score(y_, b))
+
+    #         results_data.append(fl_name)
+    #         results_theta.append(t)
+    #         results_err.append(np.mean(bayes))
+
+    #         print('num trials %s, mean error rate %s' % (str(len(bayes)), str(np.mean(bayes))))
+
+    # to_write = np.stack((results_data, results_theta, results_err), axis = 1)
+
+    # df = pd.DataFrame(to_write, 
+    #                 columns = ['Dataset', 'Theta', 'Mean Error'])
+
+    # df.to_csv(os.path.join('results', 'cval_theta', 'cval_theta.csv'))
+
+    """
+    cross validate beta
+    """
+
     use_datasets = ['heart.txt', 'australian.txt']
     use_classes = [(-1, 1), (-1, 1)]
 
     n_trials = 5
     feat_perc = .5
 
-    thetas = np.linspace(.9, 2, 8)
+    betas = np.linspace(.8, 1.2, 8)
 
     results_data = []
-    results_theta = []
+    results_beta = []
     results_err = []
 
     for j, d in enumerate(use_datasets):
+
+        print('doing dataset %s' % d)
 
         fl_name = re.search('^.+?(?=\.txt)', d).group(0)
 
@@ -359,7 +420,9 @@ if __name__ == '__main__':
 
         feats = int(np.floor(feat_perc * X.shape[1]))
 
-        for t in thetas:
+        for b in betas:
+
+            print('doing beta %s' % t)
 
             bayes = []
 
@@ -369,20 +432,22 @@ if __name__ == '__main__':
                 ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
                 e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
-                                                    a = 1, b = 1, theta = t)
+                                                    a = 1, b = b, theta = .1)
 
                 bayes.append(1 - accuracy_score(y_, b))
 
             results_data.append(fl_name)
-            results_theta.append(t)
+            results_beta.append(t)
             results_err.append(np.mean(bayes))
 
-    to_write = np.stack((results_data, results_theta, results_err), axis = 1)
+            print('num trials %s, mean error rate %s' % (str(len(bayes)), str(np.mean(bayes))))
+
+    to_write = np.stack((results_data, results_beta, results_err), axis = 1)
 
     df = pd.DataFrame(to_write, 
-                    columns = ['Dataset', 'Theta', 'Mean Error'])
+                    columns = ['Dataset', 'Beta', 'Mean Error'])
 
-    df.to_csv(os.path.join('results', 'cval_theta', 'cval_theta.csv'))
+    df.to_csv(os.path.join('results', 'cval_beta', 'cval_beta.csv'))
 
 
 

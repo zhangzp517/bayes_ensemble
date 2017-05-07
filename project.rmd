@@ -4,13 +4,22 @@ output:
     fig_height: 6
     fig_width: 10
 author: 'Zachary Gallegos and Saman Sirafi'
-title: 'A Bayesian Approach for Online Classifier Ensemble (Bai, Lam, and Sclaroff)'
+title: 'An Overview of "A Bayesian Approach for Online Classifier Ensemble" by (Bai, Lam, and Sclaroff)'
 abstract: 'This paper reviews a technique presented in "A Bayesian Approach for Online Classifier Ensemble" (Bai, Lam, and Sclaroff) for optimizing the selection of ensemble weights in an online classification setting. The presentation is Bayesian in fashion and involves defining a likelihood distribution for the losses of each classifier and a prior distribution for the ensemble weights, and updating the weights at each step based on their posterior distribution. The authors experiments (and the reproductions in this paper) show that this method often compares favorably to a single online classifier and other ensemble weighting schemes, such as uniform voting and stochastic gradient descent (SGD).'
 ---
 
 # Introduction
 
-In classification problems, ensembling is a popular technique in machine learning that involves aggregating many "weak" classifiers into a "strong" one that, ideally, outperforms any of the individual classifiers on its own. In the interest of optimizing the aggregation process, individual classifiers in the ensemble are often weighted in some fashion that is intended to produce more accurate predictions. In a standard offline setting (that is, one in which the model is trained once and new data is not added to the trained model in any fashion) many methods for choosing the ensemble weights have been investigated.
+
+In classification problems, ensembling is a popular technique in statital and machine learning approaches. Some commonly known algorithms are ensemble methods such as Random Forest. Random Forest is an ensemble of decision trees that then yield the mode of the tree results for classification problems or the mean in the case of Regression problems. Although ensembling methods are used in many different ways, some as simples as means or modes; other methods use a second level of supervised learning algorithm to combine the results. In ensembling the first layer of algorithms are called 'weak' in reference to their lack of ability to make predictions effectively and the ensemble produces a 'strong' method, may it be a classification or regression problem. Without loss of generality we will focus on classification problems which is the specific ensemble method presented in this paper.
+
+One challenge when ensembling with a new algorithm is the prospect of overfitting. To avoid this problem each weak classifier must differ from the others, thus a common practice is bagging(bootstrap aggregate). In bagging random subsets of the predictors are selected to build each of the weak classifier. This method is used in creating the decision trees of a Random Forest as well. 
+
+This paper will be exploring the optimization of the ensemble process for classification using a bayesian ensemble method. 
+
+In a standard offline setting (that is, one in which the model is trained once and new data is not added to the trained model in any fashion) many methods for choosing the ensemble weights have been investigated. Here we are investigating an online classifier setting. Online learning is refered to when data becomes available in a sequential order and is used to update our predictor for future data at each step, as opposed to batch learning techniques which generate the best predictor by learning on the entire training data set at once. An example use case of online training is in internet advertising use cases when the algorithm needs to update as data regarding your seach and click pattern has been observed to produce the best next recommendation that will increase your likelihood on clicking on the advertisement. 
+
+In this setting not only the 'weak' algorithms need to be updated. The ensemble algorithm needs to be updated with new observations. Thus the challenge here is that the ensemble method should yield a superior result in every update.
 
 # A Bayesian Method for Optimizing Online Ensemble Weights
 
@@ -59,7 +68,7 @@ In particular, suppose that the loss function of the ensemble has the form:
 l\left(\mathbf{\lambda}, \mathbf{g}\right) = \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \nonumber
 \end{align}
 
-...where $g$ is the logistic loss function. This definition is straightforward and is a simple weighted sum of the values of the loss function for each classifier, with an extra term to avoid the trivial minimizer of $\mathbf{\lambda} = \mathbf{0}$ (the second term shrinks rapidly as the values of each $\lambda_i$ become small). The parameter $\theta$ controls the tradeoff between minimizing the first term and maximizing the second, and effectively controls our tolerance for small weights (in practice, this term does not seem especially important).
+...where $g$ is the logistic loss function. This definition is straightforward and is a simple weighted sum of the values of the loss function for each classifier, with an extra term to avoid the trivial minimizer of $\mathbf{\lambda} = \mathbf{0}$ (the second term shrinks rapidly as the values of each $\lambda_i$ become small). The parameter $\theta$ controls the tradeoff between minimizing the first term and maximizing the second, and effectively controls our tolerance for small weights. $\theta$ is cross-validated in the empirical section, and in practice, does not seem especially important.
 
 If we subtract an extra term $mlog\theta$ from the ensemble loss function given (which does not affect the optimization process), then following the definition $p\left(\mathbf{g} \big| \mathbf{\lambda} \right) = e^{-l\left(\mathbf{\lambda}, \mathbf{g}\right)}$ given in the prior section, the likelihood function takes the form:
 
@@ -134,7 +143,7 @@ For each trial, the test dataset in question is randomly split into an initial t
 
 1. "Voting" uses soft voting (class chosen by $argmax$ of the sums of the probability estimates for each class from each classifier in the ensemble).
 2. "SGD" estimates the ensemble weights by stochastic gradient descent.
-3. "Bayes" estimates the ensemble weights by the method described in this paper and make the prediction by the $argmin$ of the sums of the weighted losses for each class. Hyperparameters are set at $\alpha = 1$, $\beta = 1$, and $\theta = .1$. These are the values used in the final analysis given in the paper, and the authors show that the results of the experiments are practically invariant to the values of the hyperparameters, so we omit any tuning of them.
+3. "Bayes" estimates the ensemble weights by the method described in this paper and make the prediction by the $argmin$ of the sums of the weighted losses for each class. Hyperparameters are set at $\alpha = 1$, $\beta = 1$, and $\theta = .1$. These are the values used in the final analysis given in the paper, and the authors show that the results of the experiments are practically invariant to the values of the hyperparameters, so we omit any tuning of them in the main analysis. We do present cross-validation for $\theta$, however.
 
 In brief, the outline of the experiment is given below:
 
@@ -166,6 +175,7 @@ root <- '/Users/zgallegos/documents/school/math_538/project/data/results/'
 acc_path <- paste0(root, 'accuracy/')
 cum_path <- paste0(root, 'cumulative/')
 loss_path <- paste0(root, 'loss/')
+cval_theta_path <- paste0(root, 'cval_theta/')
 
 read <- function(x, id)
 {
@@ -293,6 +303,28 @@ select_feats <- function(dataset, nmz, n)
     names(tbl) <- c('', 'Appearances in Strongest Classifier', 'Variable')
 
     tbl[, c(3, 2)]
+
+}
+
+cval_theta_plot <- function()
+{
+
+    fl <- paste0(cval_theta_path, 'cval_theta.csv')
+    data <- read.csv(fl, header = TRUE)
+
+    data$Dataset <- gsub('(?<=\\b)([a-z])', '\\U\\1', 
+                            tolower(data$Dataset), 
+                            perl = TRUE)
+
+
+    g <- ggplot(data = data, 
+            aes(x = ltheta, y = Mean.Error, colour = Dataset, group = Dataset))
+    g <- g + geom_line()
+    g <- g + ggtitle('Mean Error Rates by Value of Theta')
+    g <- g + scale_x_continuous(breaks = seq(from = -1, to = 6, by = 1))
+    g <- g + xlab(expression(log_2(theta)))
+    g <- g + theme_bw() + theme(text = element_text(family = 'serif'))
+    g
 
 }
 
@@ -462,6 +494,21 @@ cum_plot('sonar', 0)
 
 ## Cross-Validation for the Ensemble Loss Parameter
 
+Recall that the ensemble loss function employed in the theoretical formulation of the Bayesian method in this section is given by:
+
+\begin{align}
+l\left(\mathbf{\lambda}, \mathbf{g}\right) = \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \nonumber
+\end{align}
+
+...where the term $\theta$ controls the tradeoff between the weighted loss of each classifier and the term $\sum_{i=1}^{m}log\lambda_i$, which prevents $\mathbf{\lambda}$ from approaching the trivial solution of $\mathbf{0}$. In this section, we perform a breif cross-validation for this term to inform our analysis of how important this term is. Recall also that the authors of the paper found this term to be unimportant.
+
+We specify eight equally-spaced values of $\theta$ ranging from .9 to 2. For two datasets, "heart" and "australian", we perform five trials for each value of $\theta$ and record the average error rate. Results are plotted below:
+
+```{r, echo = FALSE, eval = FALSE, fig.width = 7}
+
+cval_theta_plot()
+
+```
 
 
 # Appendix
