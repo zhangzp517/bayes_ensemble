@@ -149,9 +149,9 @@ In brief, the outline of the experiment is given below:
 
 Three main conclusions are evident:
 
-* Ensembling methods do not always appear warranted, and often do not improve significantly upon the single online classifier that uses all the features. This is especially true in datasets where most of the features seem to be relevant (e.g., the "heart" dataset), as the performance of the ensembling classifiers that use only a subset of them will suffer significantly, often more than the reduced variance from ensembling can overcome. The uniform voting scheme performance deteriorates rapidly in this setting, since it has no way of weighting the classifiers in the ensemble that are performing well relative to the others.
-* The Bayesian method almost uniformly outperforms the uniform voting ensemble on each trial and each dataset. This is consistent with results presented in the paper that show the Bayesian method, under certain regularity conditions, is guaranteed to converge to a global minimum in the ensemble loss function, an attractive quality that neither voting nor SGD possesses.
-* The Bayesian method seems to perform particularly strongly in high-dimensional datasets, functioning as a sort of feature-selection process for weighting the classifiers in the ensemble that contain the important features. This is evident in the "mushrooms" dataset, which contains 112 features, and on which the Bayesian ensemble consistently improves upon the single baseline classifier by about a percentage point, but the uniform voting ensemble consistently underperforms it by about the same margin. This appears to be because the subsetting of features harms the ensemble significantly when it cannot reweight itself towards the more important features.
+* Ensembling methods do not always appear warranted, and often do not improve significantly upon the single online classifier that uses all the features. This is especially true in datasets where most of the features seem to be relevant (e.g., the "heart" dataset), as the performance of the ensembling classifiers that use only a subset of them will suffer significantly, often more than the reduced variance from ensembling can overcome. The uniform voting scheme performance deteriorates rapidly in this setting, since it has no way of weighting the classifiers in the ensemble that are performing well relative to the others. This is to be expected; the ensembling methods in use are completely contrived and require no new information or assumptions about the data to function, so we should not expect them to universally improve upon a single classifier. It does seem to be true, though, that the error rates on each trial are much more consistent for the ensemble methods (that is, they are less variable) than they are for the single classifier (the single classifier can often perform very well or very poorly relative to the usual performance for the given dataset, depending upon the trial). This, again, is to be expected, and is indeed one of the main benefits of ensembling.
+* The Bayesian method almost uniformly outperforms both the uniform voting ensemble and the stochastic gradient descent method for estimating the ensemble weights on each trial and each dataset. It also seems to be a somewhat stable trend among the cumulative error rates (at least on the datasets where ensembling seems to make a difference) that the Bayesian method reaches its minimum error rate earlier in the online training stream than do the other methods. This is consistent with results presented in the paper that show the Bayesian method, under certain regularity conditions, is guaranteed to converge to a global minimum in the ensemble loss function, an attractive quality that neither voting nor SGD possesses.
+* The Bayesian method seems to perform particularly strongly in high-dimensional datasets, functioning as a sort of feature-selection process for weighting the classifiers in the ensemble that contain the important features. This is evident in the "mushrooms" dataset, which contains 112 features, and on which the Bayesian ensemble consistently improves upon the single baseline classifier by about a percentage point, but the uniform voting ensemble consistently underperforms it by about the same margin. This appears to be because the subsetting of features harms the ensemble significantly when it cannot reweight itself towards the classifiers that are based upon the more important features.
 
 
 ```{r}
@@ -162,8 +162,10 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(knitr))
 suppressPackageStartupMessages(library(scales))
 
-acc_path <- '/Users/zgallegos/documents/school/math_538/project/data/results/accuracy/'
-cum_path <- '/Users/zgallegos/documents/school/math_538/project/data/results/cumulative/'
+root <- '/Users/zgallegos/documents/school/math_538/project/data/results/'
+acc_path <- paste0(root, 'accuracy/')
+cum_path <- paste0(root, 'cumulative/')
+loss_path <- paste0(root, 'loss/')
 
 read <- function(x, id)
 {
@@ -209,7 +211,7 @@ cum_plot <- function(dataset, trial)
     data <- read(fl, 'index')
 
     proper <- gsub('(?<=\\b)([a-z])', '\\U\\1', tolower(dataset), perl = TRUE)
-    ttl <- paste0(proper, ' - Cumulative Error, Trial ', trial)
+    ttl <- paste0(proper, ' - Cumulative Error, Trial ', trial + 1)
 
     g <- ggplot(data = data, aes(x = index, y = error, colour = Method))
     g <- g + geom_line()
@@ -219,36 +221,100 @@ cum_plot <- function(dataset, trial)
 
 }
 
+loss_plot <- function(dataset, trial)
+{
+
+    proper <- gsub('(?<=\\b)([a-z])', '\\U\\1', tolower(dataset), perl = TRUE)
+    ttl <- paste0(proper, ' Cumulative Errors and Ensemble Weights',
+                  'for Selected Ensemble Classifiers, ', trial + 1)
+
+    loss_fl <- paste0(loss_path, dataset, '_loss_samp_', trial, '.csv')
+    lam_fl <- paste0(loss_path, dataset, '_lam_samp_', trial, '.csv')
+
+    ind <- 1:4
+
+    loss <- read.csv(loss_fl)
+    for(i in ind[-1]) loss[,i] <- cumsum(loss[,i])
+    loss$what <- 'Cumulative Loss'
+
+    lam <- read.csv(lam_fl)
+    lam$what <- 'Ensemble Weight'
+
+    names(loss)[ind] <- names(lam)[ind] <- c('Sample', 'Worst', 'Median', 'Best')
+
+    loss <- melt(loss, id = c('Sample', 'what'), variable.name = 'Classifier')
+    lam <- melt(lam, id = c('Sample', 'what'), variable.name = 'Classifier')
+
+    plt <- rbind(lam, loss)
+
+    plt$what <- factor(plt$what, 
+                        levels = c('Ensemble Weight', 'Cumulative Loss'),
+                        ordered = TRUE)
+    
+    plt$Classifier <- factor(plt$Classifier,
+                        levels = c('Best', 'Median', 'Worst'),
+                        ordered = TRUE)
+
+    g <- ggplot(data = plt, aes(x = Sample, y = value, colour = Classifier))
+    g <- g + geom_line() + facet_grid(what ~ ., scales = 'free')
+    g <- g + ggtitle(ttl)
+    g <- g + theme_bw() + theme(text = element_text(family = 'serif'),
+                                axis.title.y = element_blank())
+    g
+
+}
+
+
 mns <- function(dataset)
 {
 
     fl <- paste0(acc_path, dataset, '_errors.csv')
-    data <- as.data.table(read(fl, 'trial'))
+    proper <- gsub('(?<=\\b)([a-z])', '\\U\\1', tolower(dataset), perl = TRUE)
 
-    kable(data[, .(`Mean Error` = mean(error)), by = .(Method)])
+    data <- as.data.table(read(fl, 'trial'))
+    data$Dataset <- proper
+
+    data[, .(`Mean Error` = mean(error)), by = .(Dataset, Method)]
 
 }
 
 
 ```
 
-## Dataset - Australian
+# Average Error Rate by Method
+
+The table below shows the average error rate for incoming one-step classifications made by each classifier at the end of the experiment. Ten trials were performed for each dataset.
 
 ```{r}
 
-err_plot('australian')
+datasets <- c('australian', 'ionosphere', 'heart', 'sonar')
+
+tbl <- mns(datasets[1])
+
+for(i in datasets[-1]) tbl <- rbind(tbl, mns(i))
+
+tbl <- dcast(tbl, Dataset ~ Method, value.var = 'Mean Error')
+
+names(tbl) <- c('Dataset', 'Single Classifier', 'Voting Ensemble',
+                'Bayesian Weighting', 'SGD Weighting')
+
+kable(tbl)
+
+```
+
+We notice that the Bayesian weighting scheme produces the lowest average error rate
+
+
+
+```{r}
+
+cum_plot('australian', 6)
 
 ```
 
 ```{r}
 
-mns('australian')
-
-```
-
-```{r}
-
-cum_plot(dataset = 'australian', trial = 6)
+loss_plot('australian', 6)
 
 ```
 
@@ -268,7 +334,7 @@ mns('mushrooms')
 
 ```{r}
 
-cum_plot(dataset = 'mushrooms', trial = 4)
+cum_plot('mushrooms', 4)
 
 ```
 
@@ -288,7 +354,13 @@ mns('ionosphere')
 
 ```{r}
 
-cum_plot(dataset = 'ionosphere', trial = 4)
+cum_plot('ionosphere', 4)
+
+```
+
+```{r}
+
+loss_plot('ionosphere', 4)
 
 ```
 
@@ -308,7 +380,13 @@ mns('heart')
 
 ```{r}
 
-cum_plot(dataset = 'heart', trial = 2)
+cum_plot('heart', 2)
+
+```
+
+```{r}
+
+loss_plot('heart', 2)
 
 ```
 
@@ -328,7 +406,13 @@ mns('sonar')
 
 ```{r}
 
-cum_plot(dataset = 'sonar', trial = 4)
+cum_plot('sonar', 0)
+
+```
+
+```{r}
+
+loss_plot('sonar', 0)
 
 ```
 
@@ -354,6 +438,7 @@ from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import log_loss, accuracy_score
 from sklearn.datasets import load_svmlight_file
+from sklearn.linear_model import SGDClassifier
 
 
 def create_ensemble(classifier, X, num, num_features):
@@ -391,6 +476,25 @@ def fit_ensemble(ensemble, x, y, partial = False, classes = None):
             e.partial_fit(x_, y, classes = classes)
 
     return ensemble
+
+
+def fit_sgd_ensemble(ensemble, X, y):
+    sgd = SGDClassifier(loss='log')
+    ensemble_prediction = []
+    for e in ensemble:
+
+        X_ = X[:, e.sub_feats]
+
+        e.fit(X_, y)
+        ensemble_prediction.append(e.predict_proba(X_)[:,1])
+    return sgd.fit(np.array(ensemble_prediction).transpose(),y)
+
+
+def predict_sgd(ensemble, fitted_sgd, X):
+    """
+    """
+    ensemble_preds = [e.predict_proba(X[:, e.sub_feats])[:,1][0] for e in ensemble]
+    return fitted_sgd.predict(np.array(ensemble_preds).reshape(1,-1))
 
 
 def update_bayes(ensemble, i, x, y, classes, a, b, theta):
@@ -455,7 +559,7 @@ def predict_vote(ensemble, X, classes):
 
 def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
     """
-    perform the test
+    perform the tests
     """
     X_start, X_stream, y_start, y_stream = train_test_split(
         X, y, test_size = 1 - start_prop)
@@ -465,6 +569,7 @@ def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
     single_preds = [None] * stream_size
     vote_preds = [None] * stream_size
     bayes_preds = [None] * stream_size
+    sgd_preds = [None] * stream_size
 
     for e in ensemble:
 
@@ -478,6 +583,10 @@ def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
 
     single.fit(X_start, y_start)
     ensemble = fit_ensemble(ensemble, X_start, y_start)
+    fitted_sgd = (fit_sgd_ensemble(ensemble, X_start, y_start))
+
+    _X_ = X_start
+    _y_ = y_start
 
     for j in range(stream_size):
 
@@ -497,6 +606,7 @@ def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
         single_preds[j] = single.predict(x_)
         vote_preds[j] = predict_vote(ensemble, x_, classes)
         bayes_preds[j] = predict_bayes(ensemble, j - 1, x_, classes)
+        sgd_preds[j] = predict_sgd(ensemble, fitted_sgd, x_)[0]
 
         """
         partial fit
@@ -505,11 +615,17 @@ def online_test(ensemble, single, X, y, classes, start_prop, **kwargs):
         single.partial_fit(x_, y_, classes = classes)
         ensemble = fit_ensemble(ensemble, x_, y_, partial = True, classes = classes)
 
+        _X_=(np.vstack((_X_,x_)))
+        _y_=(np.append(_y_,y_))
+
+        fitted_sgd = fit_sgd_ensemble(ensemble, _X_, _y_)
+
     single_preds = np.array(single_preds).reshape(y_stream.shape)
     vote_preds = np.array(vote_preds).reshape(y_stream.shape)
     bayes_preds = np.array(bayes_preds).reshape(y_stream.shape)
+    sgd_preds = np.array(sgd_preds).reshape(y_stream.shape)
 
-    return single_preds, vote_preds, bayes_preds, y_stream
+    return single_preds, vote_preds, bayes_preds, sgd_preds, y_stream
 
 
 
@@ -521,18 +637,12 @@ if __name__ == '__main__':
 
     os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
-    use_datasets = ['heart.txt', 'mushrooms.txt', 'australian.txt',
-                    'ionosphere.txt', 'sonar.txt']
-    use_classes = [(-1, 1), (1, 2), (-1, 1), (-1, 1), (-1, 1)]
+    use_datasets = ['heart.txt', 'australian.txt', 'ionosphere.txt', 
+                    'sonar.txt', 'mushrooms.txt',]
+    use_classes = [(-1, 1), (-1, 1), (-1, 1), (-1, 1), (1, 2)]
 
     n_trials = 10
-
-    """
-    percentage of the features ensemble classifiers get
-    we use half of them, but the authors do not state how many they use
-    results may differ slightly based on this
-    """
-    feat_perc = .5
+    feat_perc = .5 # percentage of the features ensemble classifiers get
 
     for j, k in enumerate(use_datasets):
         
@@ -550,6 +660,7 @@ if __name__ == '__main__':
         sing = []
         vote = []
         bayes = []
+        sgd = []
 
         trlz = range(n_trials)
 
@@ -560,26 +671,28 @@ if __name__ == '__main__':
             single = naive_bayes.BernoulliNB()
             ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
-            s, v, b, y_ = online_test(ensemble, single, X, y, cls, 
+            s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, 
                             start_prop = .1, a = 1, b = 1, theta = .1)
 
             indx = range(1, len(y_) + 1)
             cum_sing = 1 - np.cumsum(s == y_) / indx
             cum_vote = 1 - np.cumsum(v == y_) / indx
             cum_bayes = 1- np.cumsum(b == y_) / indx
+            cum_sgd = 1- np.cumsum(d == y_) / indx
 
-            to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes), axis = 1)
+            to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
             
-            df = pd.DataFrame(to_write, columns = ['index', 'single', 'vote', 'bayes'])
+            df = pd.DataFrame(to_write, columns = ['index', 'single', 'vote', 'bayes', 'sgd'])
             df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
 
             sing.append(1 - accuracy_score(y_, s))
             vote.append(1 - accuracy_score(y_, v))
             bayes.append(1 - accuracy_score(y_, b))
+            sgd.append(1 - accuracy_score(y_, d))
 
-        to_write = np.stack((trlz, sing, vote, bayes), axis = 1)
+        to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
 
-        df = pd.DataFrame(to_write, columns = ['trial', 'single', 'vote', 'bayes'])
+        df = pd.DataFrame(to_write, columns = ['trial', 'single', 'vote', 'bayes', 'sgd'])
         df.to_csv(os.path.join('results', 'accuracy', err_fl))
 
 ```
