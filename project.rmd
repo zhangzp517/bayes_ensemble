@@ -171,14 +171,22 @@ Three main conclusions are evident:
 * The Bayesian method seems to perform particularly strongly in high-dimensional datasets, functioning as a sort of feature-selection process for weighting the classifiers in the ensemble that contain the important features. This is evident in the "mushrooms" dataset, which contains 112 features, and on which the Bayesian ensemble consistently improves upon the single baseline classifier by about a percentage point, but the uniform voting ensemble consistently underperforms it by about the same margin. This appears to be because the subsetting of features harms the ensemble significantly when it cannot reweight itself towards the classifiers that are based upon the more important features.
 
 
+## Code
+
+The R code that produces the following plots is given below. These functions are not shown when they are called for presentation purposes. Note that this code simply plots results; the results of the experiments themselves are produced by the Python code in the Appendix.
+
 ```{r}
 
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(knitr))
 suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(stringr))
+
+opts_chunk$set(echo = FALSE)
 
 root <- '/Users/zgallegos/documents/school/math_538/project/data/results/'
+
 acc_path <- paste0(root, 'accuracy/')
 cum_path <- paste0(root, 'cumulative/')
 loss_path <- paste0(root, 'loss/')
@@ -213,11 +221,6 @@ err_plot <- function(dataset)
     g <- ggplot(data = data,
             aes(x = as.factor(trial), y = error, fill = Method, group = Method))
     g <- g + geom_bar(stat = 'identity', position = 'dodge')
-    # g <- g + geom_text(aes(label = percent(error)), 
-    #                     position = position_dodge(width = 1),
-    #                     family = 'serif',
-    #                     vjust = 0,
-    #                     size = 3)
     g <- g + coord_cartesian(ylim = c(y_lower, y_max))
     g <- g + theme_bw() + theme(text = element_text(family = 'serif'))
     g <- g + ggtitle(ttl) + xlab('Trial') + ylab('Error')
@@ -371,9 +374,9 @@ mns <- function(dataset)
 
 The table below shows the average error rate for incoming one-step classifications made by each classifier at the end of the experiment. Ten trials were performed for each dataset.
 
-Note that SGD was not performed for the 'mushrooms' dataset due to time constraints (because of its relatively large size and high number of features, each trial of SGD weighting for this dataset took roughly three hours).
+Note that SGD was not performed for the "mushrooms" dataset due to time constraints (because of its relatively large size and high number of features, each trial of SGD weighting for this dataset took roughly three hours).
 
-```{r, echo = FALSE}
+```{r}
 
 setwd('/Users/zgallegos/documents/school/math_538/project/data/')
 
@@ -385,18 +388,26 @@ for(i in datasets[-1]) tbl <- rbind(tbl, mns(i))
 
 tbl <- dcast(tbl, Dataset ~ Method, value.var = 'Mean Error')
 
-for(i in 2:5) tbl[,i] <- round(tbl[,i], 5)
+tbl$imp <- unlist(lapply(seq(nrow(tbl)), function(i) {
+            b <- min(tbl[i, setdiff(names(tbl), c('Dataset', 'Bayesian.Weighting'))])
+            percent((b - tbl[i, 'Bayesian.Weighting']) / b)
+            }))
 
-tbl$`SGD.Weighting`[tbl$`SGD.Weighting` == 1] <- '-'
+for(i in 2:5) {
+     tbl[,i] <- round(tbl[,i], 5)
+     tbl[,i] <- str_pad(tbl[,i], width = 7, side = 'right', pad = '0')
+ }
+
+tbl$`SGD.Weighting`[grep('^100', tbl$`SGD.Weighting`)] <- '-'
 
 names(tbl) <- c('Dataset', 'Single Classifier', 'Voting Ensemble',
-                'Bayesian Weighting', 'SGD Weighting')
+                'Bayesian Weighting', 'SGD Weighting', 'Bayes +- Best Other')
 
-kable(tbl)
+kable(tbl, align = 'c')
 
 ```
 
-Bayesian ensemble weighting produces the lowest error rate in all but one dataset ("heart") and universally improves upon simple voting and SGD weighting, sometimes by a relatively strong amount (e.g., for the "mushrooms" dataset, the improvement upon the second best method roughly 40%).
+Bayesian ensemble weighting produces the lowest error rate in all but one dataset ("heart") and universally improves upon simple voting and SGD weighting, sometimes by a relatively strong amount (e.g., for the "mushrooms" dataset, the improvement upon the second best method roughly 29%).
 
 The success of the method seems dependent on the nature of the features in the dataset. It seems to perform most strongly in datasets where the number of features is high, and likely contains many features that are weak predictors of the observation class. In this setting, the ability of the algorithm to re-weight the ensemble towards the classifiers that contain the more important predictors is very important, whereas it may not be as important in smaller datasets where most of the features contain some predictive power (e.g., "heart").
 
@@ -405,31 +416,31 @@ The success of the method seems dependent on the nature of the features in the d
 To inform our intuition of how consistent the performance is for each method across different random orderings of the dataset, error rates by method for each trial and method are given below.
 
 
-```{r, echo = FALSE}
+```{r}
 
 err_plot('australian')
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 err_plot('ionosphere')
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 err_plot('heart')
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 err_plot('mushrooms')
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 err_plot('sonar')
 
@@ -442,35 +453,35 @@ The ordering of the dataset does seem to be somewhat important, especially for t
 Some guidance about how important the Bayesian re-weighting is for a given dataset can be drawn from observing how the cumulative losses of the classifiers and their ensemble weights tend to move as the stream of incoming data progresses. Below, we plot for each dataset and a selected trial the cumulative loss and ensemble weight of three classifiers in the ensemble: the one with the highest ending weight at the end of the experiment, the smallest, and the median.
 
 
-```{r, echo = FALSE}
+```{r}
 
 loss_plot('australian', 0)
 
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 loss_plot('ionosphere', 0)
 
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 loss_plot('heart', 0)
 
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 loss_plot('mushrooms', 0)
 
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 loss_plot('sonar', 0)
 
@@ -485,31 +496,31 @@ Observe that for the datasets where the Bayesian method produces only a small im
 The cumulative error as the streaming samples progress for each method on a selected trial is given below:
 
 
-```{r, echo = FALSE}
+```{r}
 
 cum_plot('australian', 2)
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 cum_plot('ionosphere', 3)
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 cum_plot('heart', 1)
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 cum_plot('mushrooms', 4)
 
 ```
 
-```{r, echo = FALSE}
+```{r}
 
 cum_plot('sonar', 0)
 
@@ -523,11 +534,11 @@ Recall that the ensemble loss function employed in the theoretical formulation o
 l\left(\mathbf{\lambda}, \mathbf{g}\right) = \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \nonumber
 \end{align}
 
-...where the term $\theta$ controls the tradeoff between the weighted loss of each classifier and the term $\sum_{i=1}^{m}log\lambda_i$, which prevents $\mathbf{\lambda}$ from approaching the trivial solution of $\mathbf{0}$. In this section, we perform a breif cross-validation for this term to inform our analysis of how important this term is. Recall also that the authors of the paper found this term to be unimportant.
+...where the term $\theta$ controls the tradeoff between the weighted loss of each classifier and the term $\sum_{i=1}^{m}log\lambda_i$, which prevents $\mathbf{\lambda}$ from approaching the trivial solution of $\mathbf{0}$. In this section, we perform a brief cross-validation for this term to inform our analysis of how important this term is. Recall also that the authors of the paper found this term to be unimportant.
 
 We specify eight equally-spaced values of $\theta$ ranging from roughly .15 to 2. For two datasets, "heart" and "australian", we perform five trials for each value of $\theta$ and record the average error rate. Results are plotted below:
 
-```{r, echo = FALSE, fig.width = 7}
+```{r, fig.width = 7}
 
 cval_plot('theta')
 
@@ -539,7 +550,7 @@ Recall that the prior distribution specified for the ensemble weights were each 
 
 We specify eight equally-spaces values for $\beta$ ranging from roughly .05 to 8. Again, we use the same two datasets and perform five trials each.
 
-```{r, echo = FALSE, fig.width = 7}
+```{r, fig.width = 7}
 
 cval_plot('beta')
 
