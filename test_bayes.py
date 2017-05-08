@@ -252,143 +252,155 @@ if __name__ == '__main__':
 
     os.chdir('/users/zgallegos/documents/school/math_538/project/data')
 
+
+    """
+    """
+
     """
     run the main tests. five data files, ten trials each
     """
 
-    # use_datasets = ['heart.txt', 'australian.txt', 'ionosphere.txt', 
-    #                 'sonar.txt', 'mushrooms.txt']
-    # use_classes = [(-1, 1), (-1, 1), (-1, 1), (-1, 1), (1, 2)]
+    use_datasets = ['heart.txt', 'australian.txt', 'ionosphere.txt', 
+                    'sonar.txt', 'mushrooms.txt']
+    use_classes = [(-1, 1), (-1, 1), (-1, 1), (-1, 1), (1, 2)]
 
-    # n_trials = 10
-    # feat_perc = .5 # percentage of the features ensemble classifiers get
+    n_trials = 10
+    feat_perc = .5 # percentage of the features ensemble classifiers get
 
-    # for j, k in enumerate(use_datasets):
+    for j, k in enumerate(use_datasets):
 
-    #     if k == 'mushrooms.txt':
+        if k == 'mushrooms.txt':
 
-    #         do_sgd = False
+            do_sgd = False
 
-    #     else:
+        else:
 
-    #         do_sgd = True
+            do_sgd = True
         
-    #     fl_name = re.search('^.+?(?=\.txt)', k).group(0)
-    #     err_fl = fl_name + '_errors.csv'
+        fl_name = re.search('^.+?(?=\.txt)', k).group(0)
+        err_fl = fl_name + '_errors.csv'
 
-    #     cls = use_classes[j]
+        cls = use_classes[j]
 
-    #     X, y = load_svmlight_file(k)
-    #     X = X.toarray()
-    #     y = y.astype(int)
+        X, y = load_svmlight_file(k)
+        X = X.toarray()
+        y = y.astype(int)
 
-    #     feats = int(np.floor(feat_perc * X.shape[1]))
+        feats = int(np.floor(feat_perc * X.shape[1]))
 
-    #     sing = []
-    #     vote = []
-    #     bayes = []
-    #     sgd = []
+        sing = []
+        vote = []
+        bayes = []
+        sgd = []
 
-    #     trlz = range(n_trials)
+        trlz = range(n_trials)
 
-    #     for i in trlz:
+        for i in trlz:
 
-    #         cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
+            cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
 
-    #         single = naive_bayes.BernoulliNB()
-    #         ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+            single = naive_bayes.BernoulliNB()
+            ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
-    #         e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, do_sgd, 
-    #                                             a = 1, b = 1, theta = .1)
+            e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, do_sgd, 
+                                                a = 1, b = 1, theta = .1)
 
-    #         indx = range(1, len(y_) + 1)
-    #         cum_sing = 1 - np.cumsum(s == y_) / indx
-    #         cum_vote = 1 - np.cumsum(v == y_) / indx
-    #         cum_bayes = 1 - np.cumsum(b == y_) / indx
-    #         cum_sgd = 1 - np.cumsum(d == y_) / indx
+            indx = range(1, len(y_) + 1)
+            cum_sing = 1 - np.cumsum(s == y_) / indx
+            cum_vote = 1 - np.cumsum(v == y_) / indx
+            cum_bayes = 1 - np.cumsum(b == y_) / indx
+            cum_sgd = 1 - np.cumsum(d == y_) / indx
 
-    #         to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
+            to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
             
-    #         df = pd.DataFrame(to_write, 
-    #                 columns = ['index', 'Single Classifier', 'Voting', 
-    #                            'Bayesian Weighting', 'SGD Weighting'])
+            df = pd.DataFrame(to_write, 
+                    columns = ['index', 'Single Classifier', 'Voting', 
+                               'Bayesian Weighting', 'SGD Weighting'])
 
-    #         df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
+            df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
 
-    #         sing.append(1 - accuracy_score(y_, s))
-    #         vote.append(1 - accuracy_score(y_, v))
-    #         bayes.append(1 - accuracy_score(y_, b))
-    #         sgd.append(1 - accuracy_score(y_, d))
+            sing.append(1 - accuracy_score(y_, s))
+            vote.append(1 - accuracy_score(y_, v))
+            bayes.append(1 - accuracy_score(y_, b))
+            sgd.append(1 - accuracy_score(y_, d))
 
-    #         output_loss(e, fl_name, i)
+            output_loss(e, fl_name, i)
 
-    #     to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
+        to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
 
-    #     df = pd.DataFrame(to_write, 
-    #                 columns = ['trial', 'Single Classifier', 'Voting', 
-    #                            'Bayesian Weighting', 'SGD Weighting'])
+        df = pd.DataFrame(to_write, 
+                    columns = ['trial', 'Single Classifier', 'Voting', 
+                               'Bayesian Weighting', 'SGD Weighting'])
 
-    #     df.to_csv(os.path.join('results', 'accuracy', err_fl))
+        df.to_csv(os.path.join('results', 'accuracy', err_fl))
+
+    
+    """
+    """
 
 
     """
     cross-validate the ensemble loss parameter, theta
     """
 
-    # use_datasets = ['heart.txt', 'australian.txt']
-    # use_classes = [(-1, 1), (-1, 1)]
+    use_datasets = ['heart.txt', 'australian.txt']
+    use_classes = [(-1, 1), (-1, 1)]
 
-    # n_trials = 5
-    # feat_perc = .5
+    n_trials = 5
+    feat_perc = .5
 
-    # thetas = np.linspace(.9, 2, 8)
+    thetas = np.linspace(.015, 2, 8)
 
-    # results_data = []
-    # results_theta = []
-    # results_err = []
+    results_data = []
+    results_theta = []
+    results_err = []
 
-    # for j, d in enumerate(use_datasets):
+    for j, d in enumerate(use_datasets):
 
-    #     print('doing dataset %s' % d)
+        print('doing dataset %s' % d)
 
-    #     fl_name = re.search('^.+?(?=\.txt)', d).group(0)
+        fl_name = re.search('^.+?(?=\.txt)', d).group(0)
 
-    #     cls = use_classes[j]
+        cls = use_classes[j]
 
-    #     X, y = load_svmlight_file(d)
-    #     X = X.toarray()
-    #     y = y.astype(int)
+        X, y = load_svmlight_file(d)
+        X = X.toarray()
+        y = y.astype(int)
 
-    #     feats = int(np.floor(feat_perc * X.shape[1]))
+        feats = int(np.floor(feat_perc * X.shape[1]))
 
-    #     for t in thetas:
+        for t in thetas:
 
-    #         print('doing theta %s' % t)
+            print('doing theta %s' % t)
 
-    #         bayes = []
+            bayes = []
 
-    #         for i in range(n_trials):
+            for i in range(n_trials):
 
-    #             single = naive_bayes.BernoulliNB()
-    #             ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+                single = naive_bayes.BernoulliNB()
+                ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
-    #             e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
-    #                                                 a = 1, b = 1, theta = t)
+                e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
+                                                    a = 1, b = 1, theta = t)
 
-    #             bayes.append(1 - accuracy_score(y_, b))
+                bayes.append(1 - accuracy_score(y_, b))
 
-    #         results_data.append(fl_name)
-    #         results_theta.append(t)
-    #         results_err.append(np.mean(bayes))
+            results_data.append(fl_name)
+            results_theta.append(t)
+            results_err.append(np.mean(bayes))
 
-    #         print('num trials %s, mean error rate %s' % (str(len(bayes)), str(np.mean(bayes))))
+            print('num trials %s, mean error rate %s' % (str(len(bayes)), str(np.mean(bayes))))
 
-    # to_write = np.stack((results_data, results_theta, results_err), axis = 1)
+    to_write = np.stack((results_data, results_theta, results_err), axis = 1)
 
-    # df = pd.DataFrame(to_write, 
-    #                 columns = ['Dataset', 'Theta', 'Mean Error'])
+    df = pd.DataFrame(to_write, 
+                    columns = ['Dataset', 'Theta', 'Mean Error'])
 
-    # df.to_csv(os.path.join('results', 'cval_theta', 'cval_theta.csv'))
+    df.to_csv(os.path.join('results', 'cval_theta', 'cval_theta.csv'))
+
+    
+    """
+    """
 
     """
     cross validate beta
@@ -400,7 +412,7 @@ if __name__ == '__main__':
     n_trials = 5
     feat_perc = .5
 
-    betas = np.linspace(.8, 1.2, 8)
+    betas = np.linspace(.0625, 8, 8)
 
     results_data = []
     results_beta = []
@@ -420,9 +432,9 @@ if __name__ == '__main__':
 
         feats = int(np.floor(feat_perc * X.shape[1]))
 
-        for b in betas:
+        for b_ in betas:
 
-            print('doing beta %s' % t)
+            print('doing beta %s' % b_)
 
             bayes = []
 
@@ -432,12 +444,12 @@ if __name__ == '__main__':
                 ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
 
                 e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False,
-                                                    a = 1, b = b, theta = .1)
+                                                    a = 1, b = b_, theta = .1)
 
                 bayes.append(1 - accuracy_score(y_, b))
 
             results_data.append(fl_name)
-            results_beta.append(t)
+            results_beta.append(b_)
             results_err.append(np.mean(bayes))
 
             print('num trials %s, mean error rate %s' % (str(len(bayes)), str(np.mean(bayes))))
@@ -449,10 +461,72 @@ if __name__ == '__main__':
 
     df.to_csv(os.path.join('results', 'cval_beta', 'cval_beta.csv'))
 
+    
+    """
+    """
 
+    """
+    use only the best features for mushrooms
+    """
 
+    best = np.genfromtxt('mushrooms_best.csv', delimiter = ',', skip_header = 1)
 
+    X = np.delete(best, 0, axis = 1)
+    y = best[:,0]
+    cls = (1, 2)
 
+    feat_perc = .5
+    feats = int(np.floor(feat_perc * X.shape[1]))
+
+    sing = []
+    vote = []
+    bayes = []
+    sgd = []
+
+    n_trials = 10
+    trlz = range(n_trials)
+
+    fl_name = 'mushrooms_best'
+    err_fl = fl_name + '_errors.csv'
+
+    for i in trlz:
+
+        cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
+
+        single = naive_bayes.BernoulliNB()
+        ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
+
+        e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False, 
+                                            a = 1, b = 1, theta = .1)
+
+        indx = range(1, len(y_) + 1)
+        cum_sing = 1 - np.cumsum(s == y_) / indx
+        cum_vote = 1 - np.cumsum(v == y_) / indx
+        cum_bayes = 1 - np.cumsum(b == y_) / indx
+        cum_sgd = 1 - np.cumsum(d == y_) / indx
+
+        to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
+            
+        df = pd.DataFrame(to_write, 
+                    columns = ['index', 'Single Classifier', 'Voting', 
+                               'Bayesian Weighting', 'SGD Weighting'])
+
+        df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
+
+        sing.append(1 - accuracy_score(y_, s))
+        vote.append(1 - accuracy_score(y_, v))
+        bayes.append(1 - accuracy_score(y_, b))
+        sgd.append(1 - accuracy_score(y_, d))
+
+        output_loss(e, fl_name, i)
+
+    to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
+
+    df = pd.DataFrame(to_write, 
+                    columns = ['trial', 'Single Classifier', 'Voting', 
+                               'Bayesian Weighting', 'SGD Weighting'])
+
+    df.to_csv(os.path.join('results', 'accuracy', err_fl))
 
 
 
