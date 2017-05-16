@@ -10,16 +10,32 @@ abstract: 'This paper reviews a technique presented in "A Bayesian Approach for 
 
 # Introduction
 
+In classification problems, ensembling is a popular technique in statital and machine learning approaches. Some commonly known algorithms are ensemble methods such as Random Forest. Random Forest is an ensemble of decision trees that then yield the mode of the tree results for classification problems or the mean in the case of Regression problems. Although ensembling methods are used in many different ways, some as simples as means or modes; other methods use a second level of supervised learning algorithm to combine the results. In ensembling the first layer of algorithms are called 'weak' in reference to their lack of ability to make predictions effectively and the ensemble produces a 'strong' method, may it be a classification or regression problem. Without loss of generality we will focus on classification problems which is the specific ensemble method presented in this paper. 
+One challenge when ensembling with a new algorithm is the prospect of overfitting. To avoid this problem each weak classifier must differ from the others, thus a common practice is bagging(bootstrap aggregate). In bagging, bootstrap aggregate, random subsets of the predictors are selected to build each of the weak classifier. This method is used in creating the decision trees of a Random Forest as well. 
 
-In classification problems, ensembling is a popular technique in statital and machine learning approaches. Some commonly known algorithms are ensemble methods such as Random Forest. Random Forest is an ensemble of decision trees that then yield the mode of the tree results for classification problems or the mean in the case of Regression problems. Although ensembling methods are used in many different ways, some as simples as means or modes; other methods use a second level of supervised learning algorithm to combine the results. In ensembling the first layer of algorithms are called 'weak' in reference to their lack of ability to make predictions effectively and the ensemble produces a 'strong' method, may it be a classification or regression problem. Without loss of generality we will focus on classification problems which is the specific ensemble method presented in this paper.
-
-One challenge when ensembling with a new algorithm is the prospect of overfitting. To avoid this problem each weak classifier must differ from the others, thus a common practice is bagging(bootstrap aggregate). In bagging random subsets of the predictors are selected to build each of the weak classifier. This method is used in creating the decision trees of a Random Forest as well. 
-
-This paper will be exploring the optimization of the ensemble process for classification using a bayesian ensemble method. 
+This paper will be exploring the optimization of the ensemble process for classification using a Bayesian ensemble method. 
 
 In a standard offline setting (that is, one in which the model is trained once and new data is not added to the trained model in any fashion) many methods for choosing the ensemble weights have been investigated. Here we are investigating an online classifier setting. Online learning is refered to when data becomes available in a sequential order and is used to update our predictor for future data at each step, as opposed to batch learning techniques which generate the best predictor by learning on the entire training data set at once. An example use case of online training is in internet advertising use cases when the algorithm needs to update as data regarding your seach and click pattern has been observed to produce the best next recommendation that will increase your likelihood on clicking on the advertisement. 
 
-In this setting not only the 'weak' algorithms need to be updated. The ensemble algorithm needs to be updated with new observations. Thus the challenge here is that the ensemble method should yield a superior result in every update.
+In this setting not only the 'weak' algorithms need to be updated. The ensemble algorithm needs to be updated with new observations. Thus the challenge here is that the ensemble method should yield a superior result in every update. 
+
+## Some Common Methods of Ensembling 
+
+This paper will be exploring some commmon methods of ensembling in comparison to the proposed Bayesian method in an online classification setting.
+
+### Voting 
+
+Voting is a classification ensembling method allows the use of the input of all classifiers contribute to the final classification. Voting is divided into two methos; soft and hard voting. 
+
+Hard voting takes the classification decision of each classifier and makes a final decision based on the majority vote. 
+
+Soft voting uses a average of the likelihood the observation membership of each class as the final likelihood and thus the final choice will be the class with the highest probability. These averages can be weighted if we have the knowledge of the strength of our classifiers and the wight we would like to assign to each ones decision. 
+
+### Stochastic Gradient Descent 
+
+This method is a step wise search for the optimal coefficients of each classifier output by taking stepwise approach in the direction of the gradient. These ensembling coefficients are ones that lead to (global) minimization of the loss function. 
+
+This method is a second supervised classification layer using the outputs of our weak classifiers.
 
 # A Bayesian Method for Optimizing Online Ensemble Weights
 
@@ -242,7 +258,7 @@ cum_plot <- function(dataset, trial)
 
     g <- ggplot(data = data, aes(x = index, y = error, colour = Method))
     g <- g + geom_line()
-    g <- g + coord_cartesian(xlim = c(20, nrow(data) / length(unique(data$Method))))
+    #g <- g + coord_cartesian(xlim = c(20, nrow(data) / length(unique(data$Method))))
     g <- g + theme_bw() + theme(text = element_text(family = 'serif'))
     g <- g + ggtitle(ttl) + xlab('Sample') + ylab('Cumulative Error')
     g
@@ -407,7 +423,7 @@ kable(tbl, align = 'c')
 
 ```
 
-Bayesian ensemble weighting produces the lowest error rate in all but one dataset ("heart") and universally improves upon simple voting and SGD weighting, sometimes by a relatively strong amount (e.g., for the "mushrooms" dataset, the improvement upon the second best method roughly 29%).
+Bayesian ensemble weighting produces the lowest error rate in all but one dataset ("heart") and universally improves upon simple voting and SGD weighting, sometimes by a relatively strong amount (e.g., for the "mushrooms" dataset, the improvement upon the second best method is roughly 29%).
 
 The success of the method seems dependent on the nature of the features in the dataset. It seems to perform most strongly in datasets where the number of features is high, and likely contains many features that are weak predictors of the observation class. In this setting, the ability of the algorithm to re-weight the ensemble towards the classifiers that contain the more important predictors is very important, whereas it may not be as important in smaller datasets where most of the features contain some predictive power (e.g., "heart").
 
@@ -498,7 +514,7 @@ The cumulative error as the streaming samples progress for each method on a sele
 
 ```{r}
 
-cum_plot('australian', 2)
+cum_plot('australian', 5)
 
 ```
 
@@ -534,7 +550,7 @@ Recall that the ensemble loss function employed in the theoretical formulation o
 l\left(\mathbf{\lambda}, \mathbf{g}\right) = \theta\sum_{i=1}^{m}\lambda_i g_i - \sum_{i=1}^{m}log\lambda_i \nonumber
 \end{align}
 
-...where the term $\theta$ controls the tradeoff between the weighted loss of each classifier and the term $\sum_{i=1}^{m}log\lambda_i$, which prevents $\mathbf{\lambda}$ from approaching the trivial solution of $\mathbf{0}$. In this section, we perform a brief cross-validation for this term to inform our analysis of how important this term is. Recall also that the authors of the paper found this term to be unimportant.
+...where the term $\theta$ controls the tradeoff between the weighted loss of each classifier and the term $\sum_{i=1}^{m}log\lambda_i$, which prevents $\mathbf{\lambda}$ from approaching the trivial solution of $\mathbf{0}$. In this section, we perform a brief cross-validation for this term to inform our analysis of how sensitive the results of the ensemble predictions are to its value. Recall also that the authors of the paper found this term to be unimportant.
 
 We specify eight equally-spaced values of $\theta$ ranging from roughly .15 to 2. For two datasets, "heart" and "australian", we perform five trials for each value of $\theta$ and record the average error rate. Results are plotted below:
 
@@ -564,7 +580,7 @@ Again, we see that the mean error rate is not especially sensitive to the choice
 
 The results shown in the Empirical section were produced by the following Python code:
 
-```{python, eval = FALSE}
+```{python, eval = FALSE, echo = TRUE}
 
 """
 not run

@@ -414,6 +414,9 @@ if __name__ == '__main__':
 
     betas = np.linspace(.0625, 8, 8)
 
+    use_datasets = ['australian.txt']
+    betas = [betas[0]]
+    
     results_data = []
     results_beta = []
     results_err = []
@@ -460,73 +463,6 @@ if __name__ == '__main__':
                     columns = ['Dataset', 'Beta', 'Mean Error'])
 
     df.to_csv(os.path.join('results', 'cval_beta', 'cval_beta.csv'))
-
-    
-    """
-    """
-
-    """
-    use only the best features for mushrooms
-    """
-
-    best = np.genfromtxt('mushrooms_best.csv', delimiter = ',', skip_header = 1)
-
-    X = np.delete(best, 0, axis = 1)
-    y = best[:,0]
-    cls = (1, 2)
-
-    feat_perc = .5
-    feats = int(np.floor(feat_perc * X.shape[1]))
-
-    sing = []
-    vote = []
-    bayes = []
-    sgd = []
-
-    n_trials = 10
-    trlz = range(n_trials)
-
-    fl_name = 'mushrooms_best'
-    err_fl = fl_name + '_errors.csv'
-
-    for i in trlz:
-
-        cumerr_fl = fl_name + '_cumerrors_trial_%s.csv' % i
-
-        single = naive_bayes.BernoulliNB()
-        ensemble = create_ensemble(naive_bayes.BernoulliNB(), X, 100, feats)
-
-        e, s, v, b, d, y_ = online_test(ensemble, single, X, y, cls, .1, False, 
-                                            a = 1, b = 1, theta = .1)
-
-        indx = range(1, len(y_) + 1)
-        cum_sing = 1 - np.cumsum(s == y_) / indx
-        cum_vote = 1 - np.cumsum(v == y_) / indx
-        cum_bayes = 1 - np.cumsum(b == y_) / indx
-        cum_sgd = 1 - np.cumsum(d == y_) / indx
-
-        to_write = np.stack((indx, cum_sing, cum_vote, cum_bayes, cum_sgd), axis = 1)
-            
-        df = pd.DataFrame(to_write, 
-                    columns = ['index', 'Single Classifier', 'Voting', 
-                               'Bayesian Weighting', 'SGD Weighting'])
-
-        df.to_csv(os.path.join('results', 'cumulative', cumerr_fl))
-
-        sing.append(1 - accuracy_score(y_, s))
-        vote.append(1 - accuracy_score(y_, v))
-        bayes.append(1 - accuracy_score(y_, b))
-        sgd.append(1 - accuracy_score(y_, d))
-
-        output_loss(e, fl_name, i)
-
-    to_write = np.stack((trlz, sing, vote, bayes, sgd), axis = 1)
-
-    df = pd.DataFrame(to_write, 
-                    columns = ['trial', 'Single Classifier', 'Voting', 
-                               'Bayesian Weighting', 'SGD Weighting'])
-
-    df.to_csv(os.path.join('results', 'accuracy', err_fl))
 
 
 
